@@ -1,0 +1,4 @@
+Date,Description,Amount,Currency,Balance,Reference
+2026-10-01,Synthetic freelance income,1200.00,USD,6200.00,SAMPLE-001
+2026-10-02,Synthetic grocery purchase,-82.50,USD,6117.50,SAMPLE-002
+2026-10-03,Synthetic coffee purchase,-6.75,USD,6110.75,SAMPLE-003

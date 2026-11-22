@@ -1,0 +1,19 @@
+name: finscope
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: finscope
+      POSTGRES_PASSWORD: finscope_local
+      POSTGRES_DB: finscope
+    ports:
+      - '127.0.0.1:54321:5432'
+    volumes:
+      - finscope-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U finscope -d finscope']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  finscope-data:

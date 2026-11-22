@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id           String         @id @default(cuid())
+  name         String
+  demo         Boolean        @default(false)
+  expiresAt    DateTime?
+  currency     String         @default("USD")
+  createdAt    DateTime       @default(now())
+  users        User[]
+  sessions     Session[]
+  accounts     Account[]
+  transactions Transaction[]
+  imports      ImportBatch[]
+  budgets      Budget[]
+  goals        Goal[]
+  rates        ExchangeRate[]
+  audits       AuditEvent[]
+
+  @@index([demo, expiresAt])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([expiresAt])
+}
+
+model Account {
+  id             String        @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  institution    String
+  currency       String
+  kind           String        @default("checking")
+  openingBalance Decimal       @db.Decimal(20, 4)
+  archived       Boolean       @default(false)
+  transactions   Transaction[]
+  imports        ImportBatch[]
+  createdAt      DateTime      @default(now())
+
+  @@index([workspaceId, archived])
+}
+
+model Transaction {
+  id               String       @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountId        String
+  account          Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  date             DateTime     @db.Date
+  description      String
+  merchant         String
+  amount           Decimal      @db.Decimal(20, 4)
+  category         String
+  kind             String
+  notes            String       @default("")
+  reviewed         Boolean      @default(false)
+  fingerprint      String
+  sourceReference  String       @default("")
+  statementBalance Decimal?     @db.Decimal(20, 4)
+  importId         String?
+  import           ImportBatch? @relation(fields: [importId], references: [id], onDelete: Cascade)
+  createdAt        DateTime     @default(now())
+
+  @@unique([workspaceId, accountId, fingerprint])
+  @@index([workspaceId, date, id])
+  @@index([workspaceId, category, date])
+  @@index([accountId, date])
+  @@index([importId])
+}
+
+model ImportBatch {
+  id           String        @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountId    String
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  hash         String
+  format       String
+  count        Int
+  duplicates   Int
+  warnings     String[]
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+
+  @@unique([workspaceId, accountId, hash])
+  @@index([workspaceId, createdAt])
+}
+
+model Budget {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category    String
+  amount      Decimal   @db.Decimal(20, 4)
+  month       String
+
+  @@unique([workspaceId, category, month])
+}
+
+model Goal {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  target      Decimal   @db.Decimal(20, 4)
+  saved       Decimal   @db.Decimal(20, 4)
+  dueDate     DateTime  @db.Date
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+}
+
+model ExchangeRate {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  from        String
+  to          String
+  date        DateTime  @db.Date
+  rate        Decimal   @db.Decimal(24, 12)
+  source      String
+
+  @@unique([workspaceId, from, to, date])
+}
+
+model AuditEvent {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  action      String
+  entityId    String
+  detail      String
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+}
+
+model RateLimit {
+  key       String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
